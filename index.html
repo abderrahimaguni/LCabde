@@ -1,0 +1,988 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISAWeb - Life in Weeks</title>
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --bg-tertiary: #e9ecef;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --border-color: #dee2e6;
+            --cell-empty: #ffffff;
+            --cell-past-empty: #d0d0d0;
+            --cell-filled: #2d2d2d;
+            --cell-current: #10b981;
+            --cell-future: #ffffff;
+            --modal-bg: #ffffff;
+            --shadow: rgba(0, 0, 0, 0.1);
+            --accent: #4a90e2;
+            --accent-hover: #357abd;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+        }
+
+        .dark-mode {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --bg-tertiary: #3d3d3d;
+            --text-primary: #e5e5e5;
+            --text-secondary: #a0a0a0;
+            --border-color: #404040;
+            --cell-empty: #2d2d2d;
+            --cell-past-empty: #404040;
+            --cell-filled: #e5e5e5;
+            --cell-current: #10b981;
+            --cell-future: #2d2d2d;
+            --modal-bg: #2d2d2d;
+            --shadow: rgba(0, 0, 0, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            padding: 20px;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-tertiary) 100%);
+            border-radius: 16px;
+            box-shadow: 0 4px 20px var(--shadow);
+        }
+
+        h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #4a90e2 0%, #10b981 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .clock {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--text-primary);
+        }
+
+        .date {
+            font-size: 16px;
+            color: var(--text-secondary);
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+
+        button:hover {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        button.danger {
+            background: var(--danger);
+        }
+
+        button.danger:hover {
+            background: var(--danger-hover);
+        }
+
+        .theme-toggle {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            padding: 10px 16px;
+        }
+
+        .theme-toggle:hover {
+            background: var(--border-color);
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+
+        .grid-wrapper {
+            overflow: auto;
+            max-height: 70vh;
+            background: var(--bg-primary);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px var(--shadow);
+            padding: 2px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 45px repeat(52, 16px);
+            gap: 2px;
+            width: fit-content;
+            padding: 10px;
+        }
+
+        .label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .year-label {
+            height: 16px;
+            position: sticky;
+            left: 0;
+            background: var(--bg-primary);
+            z-index: 2;
+        }
+
+        .week-label {
+            height: 24px;
+            position: sticky;
+            top: 0;
+            background: var(--bg-primary);
+            z-index: 1;
+        }
+
+        .corner {
+            position: sticky;
+            left: 0;
+            top: 0;
+            z-index: 3;
+            background: var(--bg-primary);
+        }
+
+        .cell {
+            width: 16px;
+            height: 16px;
+            background: var(--cell-empty);
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .cell:hover {
+            transform: scale(1.3);
+            box-shadow: 0 2px 8px var(--shadow);
+            z-index: 10;
+        }
+
+        .cell.past-empty {
+            background: var(--cell-past-empty);
+        }
+
+        .cell.filled {
+            background: var(--cell-filled);
+            border-color: var(--cell-filled);
+        }
+
+        .cell.current {
+            background: var(--cell-current);
+            border-color: var(--cell-current);
+            box-shadow: 0 0 12px var(--cell-current);
+            animation: pulse 2s infinite;
+        }
+
+        .cell.future {
+            background: var(--cell-future);
+            border: 1px dashed var(--border-color);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .stats {
+            text-align: center;
+            margin-top: 20px;
+            padding: 20px;
+            background: var(--bg-primary);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px var(--shadow);
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            padding: 15px 25px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            backdrop-filter: blur(4px);
+            animation: fadeIn 0.3s;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: var(--modal-bg);
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 40px var(--shadow);
+            animation: slideUp 0.3s;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .modal-header h2 {
+            font-size: 24px;
+            color: var(--text-primary);
+        }
+
+        .close-btn {
+            background: var(--bg-tertiary);
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.3s;
+        }
+
+        .close-btn:hover {
+            background: var(--border-color);
+            transform: rotate(90deg);
+        }
+
+        .editor-toolbar {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border-radius: 8px 8px 0 0;
+            border: 1px solid var(--border-color);
+            border-bottom: none;
+        }
+
+        .editor-btn {
+            padding: 6px 12px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .editor-btn:hover {
+            background: var(--bg-secondary);
+            transform: none;
+            box-shadow: none;
+        }
+
+        .editor-btn.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .editor-content {
+            min-height: 200px;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 0 0 8px 8px;
+            background: var(--bg-primary);
+            outline: none;
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-primary);
+            overflow-y: auto;
+            max-height: 300px;
+        }
+
+        .editor-content img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .file-section {
+            margin: 20px 0;
+        }
+
+        .file-section h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+
+        .upload-btn-wrapper {
+            display: inline-block;
+        }
+
+        .upload-btn {
+            padding: 10px 20px;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+
+        .upload-btn:hover {
+            border-color: var(--accent);
+            background: var(--bg-secondary);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .files-list {
+            margin-top: 15px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            transition: all 0.3s;
+        }
+
+        .file-item:hover {
+            background: var(--border-color);
+        }
+
+        .file-name {
+            flex: 1;
+            margin-right: 15px;
+            font-size: 14px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-remove {
+            padding: 6px 12px;
+            background: var(--danger);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+
+        .hidden-input {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 24px;
+            }
+
+            .clock {
+                font-size: 20px;
+            }
+
+            .grid {
+                grid-template-columns: 35px repeat(52, 12px);
+            }
+
+            .cell {
+                width: 12px;
+                height: 12px;
+            }
+
+            .year-label {
+                height: 12px;
+                font-size: 9px;
+            }
+
+            .modal-content {
+                padding: 20px;
+            }
+
+            .stat-value {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>ISAWeb</h1>
+        <div class="clock" id="clock">00:00:00</div>
+        <div class="date" id="date">Loading...</div>
+    </div>
+
+    <div class="controls">
+        <button class="theme-toggle" onclick="toggleTheme()">🌓 Theme</button>
+        <button onclick="manualSave()">💾 Save</button>
+        <button onclick="exportJSON()">📥 Export</button>
+        <button onclick="document.getElementById('importFile').click()">📤 Import</button>
+        <button class="danger" onclick="clearAll()">🗑️ Clear</button>
+    </div>
+
+    <input type="file" id="importFile" accept=".json" class="hidden-input" onchange="importJSON(event)">
+
+    <div class="container">
+        <div class="grid-wrapper">
+            <div class="grid" id="grid"></div>
+        </div>
+
+        <div class="stats">
+            <div class="stats-row">
+                <div class="stat-item">
+                    <div class="stat-value" id="filledCount">0</div>
+                    <div class="stat-label">Weeks Lived</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="percentLived">0%</div>
+                    <div class="stat-label">Life Lived</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="remainingWeeks">4680</div>
+                    <div class="stat-label">Weeks Remaining</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Year 1, Week 1</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            
+            <div class="editor-toolbar">
+                <button class="editor-btn" onclick="formatText('bold')"><b>B</b></button>
+                <button class="editor-btn" onclick="formatText('italic')"><i>I</i></button>
+                <button class="editor-btn" onclick="formatText('underline')"><u>U</u></button>
+                <select class="editor-btn" onchange="changeFontSize(this.value)">
+                    <option value="3">Normal</option>
+                    <option value="1">Small</option>
+                    <option value="5">Large</option>
+                    <option value="7">Huge</option>
+                </select>
+                <input type="color" class="editor-btn" onchange="changeColor(this.value)" title="Text Color">
+            </div>
+            <div class="editor-content" id="editor" contenteditable="true"></div>
+            
+            <div class="file-section">
+                <h3>📎 Attachments</h3>
+                <label class="upload-btn">
+                    + Upload Image or PDF
+                    <input type="file" class="file-input" id="fileInput" accept="image/*,.pdf" multiple onchange="handleFiles(event)">
+                </label>
+                <div class="files-list" id="filesList"></div>
+            </div>
+            
+            <div class="modal-actions">
+                <button class="danger" onclick="deleteWeekData()">Delete Week</button>
+                <button onclick="saveWeekData()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Storage configuration
+        const STORAGE_KEY = 'isaWebLifeData';
+        const THEME_KEY = 'isaWebTheme';
+        const TOTAL_WEEKS = 4680;
+        
+        // Application state
+        let weekData = {};
+        let currentYear = null;
+        let currentWeek = null;
+        let currentWeekIndex = null;
+        let birthDate = null;
+
+        // Clock update function
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
+            
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('date').textContent = now.toLocaleDateString('en-US', options);
+        }
+
+        // Calculate current week based on birth date
+        function getCurrentWeekIndex() {
+            if (!birthDate) return null;
+            const now = new Date();
+            const birth = new Date(birthDate);
+            const diffTime = now - birth;
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            const weekIndex = Math.floor(diffDays / 7);
+            return weekIndex >= 0 ? weekIndex : null;
+        }
+
+        // Initialize and render the grid
+        function initGrid() {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            
+            // Corner label
+            const corner = document.createElement('div');
+            corner.className = 'label corner';
+            corner.textContent = 'Year';
+            grid.appendChild(corner);
+            
+            // Week labels (1-52)
+            for (let w = 1; w <= 52; w++) {
+                const label = document.createElement('div');
+                label.className = 'label week-label';
+                label.textContent = w;
+                grid.appendChild(label);
+            }
+            
+            const currentWeekIdx = getCurrentWeekIndex();
+            
+            // Create 90 years of weeks
+            for (let y = 1; y <= 90; y++) {
+                // Year label
+                const yearLabel = document.createElement('div');
+                yearLabel.className = 'label year-label';
+                yearLabel.textContent = y;
+                grid.appendChild(yearLabel);
+                
+               
+                 // 52 weeks per year
+                for (let w = 1; w <= 52; w++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.year = y;
+                    cell.dataset.week = w;
+                    
+                    const weekIndex = (y - 1) * 52 + (w - 1);
+                    const key = `${y}-${w}`;
+                    
+                    // Apply cell styling based on current week
+                    if (currentWeekIdx !== null) {
+                        if (weekIndex === currentWeekIdx) {
+                            cell.classList.add('current');
+                        } else if (weekIndex < currentWeekIdx) {
+                            if (weekData[key]) {
+                                cell.classList.add('filled');
+                            } else {
+                                cell.classList.add('past-empty');
+                            }
+                        } else {
+                            cell.classList.add('future');
+                        }
+                    } else {
+                        if (weekData[key]) {
+                            cell.classList.add('filled');
+                        }
+                    }
+                    
+                    cell.addEventListener('click', () => openModal(y, w));
+                    grid.appendChild(cell);
+                }
+            }
+            
+            updateStats();
+        }
+
+        // Open modal for a specific week
+        function openModal(year, week) {
+            currentYear = year;
+            currentWeek = week;
+            currentWeekIndex = (year - 1) * 52 + (week - 1);
+            
+            const key = `${year}-${week}`;
+            const data = weekData[key] || {};
+            
+            document.getElementById('modalTitle').textContent = `Year ${year}, Week ${week}`;
+            document.getElementById('editor').innerHTML = data.content || '';
+            
+            displayFiles(data.files || []);
+            document.getElementById('modal').classList.add('active');
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+            currentYear = null;
+            currentWeek = null;
+        }
+
+        // Rich text editor functions
+        function formatText(command) {
+            document.execCommand(command, false, null);
+            document.getElementById('editor').focus();
+        }
+
+        function changeFontSize(size) {
+            document.execCommand('fontSize', false, size);
+            document.getElementById('editor').focus();
+        }
+
+        function changeColor(color) {
+            document.execCommand('foreColor', false, color);
+            document.getElementById('editor').focus();
+        }
+
+        // Handle file uploads
+        function handleFiles(event) {
+            const files = Array.from(event.target.files);
+            const key = `${currentYear}-${currentWeek}`;
+            
+            if (!weekData[key]) weekData[key] = {};
+            if (!weekData[key].files) weekData[key].files = [];
+            
+            files.forEach(file => {
+                if (file.size > 5 * 1024 * 1024) {
+                    alert(`${file.name} is too large (max 5MB)`);
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const fileData = {
+                        name: file.name,
+                        type: file.type,
+                        data: e.target.result
+                    };
+                    
+                    // If image, add to editor
+                    if (file.type.startsWith('image/')) {
+                        const img = `<img src="${e.target.result}" alt="${file.name}" />`;
+                        document.getElementById('editor').innerHTML += img;
+                    }
+                    
+                    weekData[key].files.push(fileData);
+                    displayFiles(weekData[key].files);
+                    autoSave();
+                };
+                reader.readAsDataURL(file);
+            });
+            
+            event.target.value = '';
+        }
+
+        // Display uploaded files
+        function displayFiles(files) {
+            const list = document.getElementById('filesList');
+            list.innerHTML = '';
+            
+            files.forEach((file, index) => {
+                const item = document.createElement('div');
+                item.className = 'file-item';
+                item.innerHTML = `
+                    <span class="file-name" title="${file.name}">${file.name}</span>
+                    <button class="file-remove" onclick="removeFile(${index})">Remove</button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        // Remove a file
+        function removeFile(index) {
+            const key = `${currentYear}-${currentWeek}`;
+            if (weekData[key] && weekData[key].files) {
+                weekData[key].files.splice(index, 1);
+                displayFiles(weekData[key].files);
+                autoSave();
+            }
+        }
+
+        // Save week data
+        function saveWeekData() {
+            const key = `${currentYear}-${currentWeek}`;
+            const content = document.getElementById('editor').innerHTML.trim();
+            const files = weekData[key]?.files || [];
+            
+            if (!content && files.length === 0) {
+                delete weekData[key];
+            } else {
+                weekData[key] = { content, files };
+            }
+            
+            autoSave();
+            initGrid();
+            closeModal();
+        }
+
+        // Delete week data
+        function deleteWeekData() {
+            if (confirm('Delete all data for this week?')) {
+                const key = `${currentYear}-${currentWeek}`;
+                delete weekData[key];
+                autoSave();
+                initGrid();
+                closeModal();
+            }
+        }
+
+        // Update statistics
+        function updateStats() {
+            const filled = Object.keys(weekData).length;
+            const percent = ((filled / TOTAL_WEEKS) * 100).toFixed(1);
+            const remaining = TOTAL_WEEKS - filled;
+            
+            document.getElementById('filledCount').textContent = filled;
+            document.getElementById('percentLived').textContent = percent + '%';
+            document.getElementById('remainingWeeks').textContent = remaining;
+        }
+
+        // AUTO-SAVE to localStorage (silent)
+        function autoSave() {
+            try {
+                const data = {
+                    weekData: weekData,
+                    birthDate: birthDate,
+                    lastSaved: new Date().toISOString()
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                console.log('Auto-saved successfully');
+            } catch (e) {
+                console.error('Auto-save failed:', e);
+                if (e.name === 'QuotaExceededError') {
+                    alert('Storage quota exceeded! Please export your data and clear some old entries.');
+                }
+            }
+        }
+
+        // MANUAL SAVE (with confirmation)
+        function manualSave() {
+            try {
+                const data = {
+                    weekData: weekData,
+                    birthDate: birthDate,
+                    lastSaved: new Date().toISOString()
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                alert('✓ Data saved successfully!');
+            } catch (e) {
+                console.error('Save failed:', e);
+                alert('❌ Error: Could not save data. Storage might be full.');
+            }
+        }
+
+        // LOAD data from localStorage
+        function loadData() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    weekData = data.weekData || {};
+                    birthDate = data.birthDate || null;
+                    console.log('✓ Data loaded from localStorage');
+                } else {
+                    console.log('No saved data found');
+                }
+            } catch (e) {
+                console.error('Error loading data:', e);
+                weekData = {};
+                birthDate = null;
+            }
+            
+            // Ask for birth date if not set
+            if (!birthDate) {
+                const input = prompt('Welcome to ISAWeb!\n\nEnter your birth date (YYYY-MM-DD):');
+                if (input) {
+                    birthDate = input;
+                    autoSave();
+                }
+            }
+        }
+
+        // EXPORT data as JSON
+        function exportJSON() {
+            const data = {
+                version: '3.0',
+                exportDate: new Date().toISOString(),
+                birthDate: birthDate,
+                weekData: weekData
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `isaWeb-backup-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // IMPORT data from JSON
+        function importJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    weekData = data.weekData || {};
+                    birthDate = data.birthDate || null;
+                    autoSave();
+                    initGrid();
+                    alert('✓ Data imported and saved successfully!');
+                } catch (err) {
+                    alert('❌ Import failed: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        // CLEAR all data
+        function clearAll() {
+            if (confirm('⚠️ Clear all data? This cannot be undone!\n\nConsider exporting your data first.')) {
+                weekData = {};
+                autoSave();
+                initGrid();
+                alert('✓ All data cleared');
+            }
+        }
+
+        // THEME toggle
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
+        }
+
+        // LOAD theme preference
+        function loadTheme() {
+            const theme = localStorage.getItem(THEME_KEY);
+            if (theme === 'dark') {
+                document.body.classList.add('dark-mode');
+            }
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('modal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        // INITIALIZATION - Load everything on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('ISAWeb starting...');
+            loadTheme();
+            loadData();
+            initGrid();
+            updateClock();
+            setInterval(updateClock, 1000);
+            console.log('ISAWeb ready!');
+        });
+        // Auto-save every 30 seconds as backup
+        setInterval(function() {
+            if (Object.keys(weekData).length > 0) {
+                autoSave();
+            }
+        }, 30000);
+
+        // Warn user before closing if there's unsaved data
+        window.addEventListener('beforeunload', function(e) {
+            // Data is auto-saved, so this is just a safety check
+            const lastSaved = localStorage.getItem(STORAGE_KEY);
+            if (!lastSaved && Object.keys(weekData).length > 0) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+    </script>
+</body>
+</html>
